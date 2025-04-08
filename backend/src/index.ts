@@ -6,7 +6,7 @@ import cors from "cors";
 import Anthropic from '@anthropic-ai/sdk';
 import { TextBlock } from "@anthropic-ai/sdk/resources";
 
-import { BASE_PROMPT } from "./prompt";
+import { BASE_PROMPT, getSystemPrompt } from "./prompt";
 import { reactBasePrompt } from "./defaults/reactBase";
 import { nodeBasePrompt } from "./defaults/nodeBase";
 
@@ -55,6 +55,23 @@ app.post("/template", async (req, res) => {
         message: "Something went wrong"
     })
     return;
+});
+
+app.post("/chat", async (req, res) => {
+    const messages = req.body.messages;
+
+    const response = await anthropic.messages.create({
+        messages: messages,
+        model: "claude-3-5-sonnet-20240620",
+        max_tokens: 1000,
+        system: getSystemPrompt()
+    })
+
+    console.log(response);
+
+    res.json({
+        response: (response.content[0] as TextBlock).text
+    })
 });
 
 
