@@ -28,7 +28,7 @@ export default function Builder() {
   const [loading, setLoading] = useState(false);
   const [templateSet, setTemplateSet] = useState(false);
   
-  const webcontainer = useWebContainer();
+  const { webcontainer } = useWebContainer();
 
   // Leftmost tab: Steps
   const [currentStep, setCurrentStep] = useState(1);
@@ -210,13 +210,13 @@ export default function Builder() {
                 />
               </div>
               <div>
-                <div className='flex'>
+                <div className='p-4 flex gap-4'>
                   <br />
                   {(loading || !templateSet) && <Loader />}
                   {!(loading || !templateSet) && <div className='flex'>
                     <textarea value={userPrompt} onChange={(e) => {
                     setPrompt(e.target.value)
-                  }} className='p-2 w-full'></textarea>
+                  }} className='m-2 p-2 rounded-md'></textarea>
                   <button onClick={async () => {
                     const newMessage = {
                       role: "user" as "user",
@@ -240,7 +240,7 @@ export default function Builder() {
                       status: "pending" as "pending"
                     }))]);
 
-                  }} className='bg-purple-400 px-4'>Send</button>
+                  }} className='bg-purple-400  m-2 p-2 rounded-md'>Send</button>
                   </div>}
                 </div>
               </div>
