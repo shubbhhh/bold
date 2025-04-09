@@ -39,3 +39,8 @@ This is a project inspired by **Bolt**, leveraging **Anthropic**'s language mode
    ```
    ANTHROPIC_API_KEY=your_api_key_here
    ```
+
+---
+Working
+---
+https://drive.google.com/drive/folders/1hmBl0i_QlQZ2DKnjp1O_Vmccfh7-vc4Q?usp=sharing
