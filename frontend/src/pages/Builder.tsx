@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 
-import { FileItem, Step } from "../types";
+import { FileItem, Step, StepType } from "../types";
 import { BACKEND_URL } from "../config";
 
 import { parseXML } from "../utils/xmlParser";
@@ -14,6 +14,8 @@ import { FileExplorer } from "../components/FileExplorer";
 import { StepsList } from "../components/SetpsList";
 import { TabView } from "../components/TabView";
 import { CodeEditor } from "../components/CodeEditor";
+import { useWebContainer } from "../hooks/useWebContainer";
+import { PreviewFrame } from "../components/PrivewFrame";
 
 
 export default function Builder() {
@@ -25,8 +27,9 @@ export default function Builder() {
   
   const [loading, setLoading] = useState(false);
   const [templateSet, setTemplateSet] = useState(false);
-  // const webcontainer = useWebContainer();
   
+  const webcontainer = useWebContainer();
+
   // Leftmost tab: Steps
   const [currentStep, setCurrentStep] = useState(1);
   const [steps, setSteps] = useState<Step[]>([]);
@@ -77,6 +80,116 @@ export default function Builder() {
   useEffect(() => {
     init();
   }, [])
+
+  useEffect(() => {
+    let originalFiles = [...files];
+    let updateHappened = false;
+    steps.filter(({status}) => status === "pending").map(step => {
+      updateHappened = true;
+      if (step?.type === StepType.CreateFile) {
+        let parsedPath = step.path?.split("/") ?? []; // ["src", "components", "App.tsx"]
+        let currentFileStructure = [...originalFiles]; // {}
+        let finalAnswerRef = currentFileStructure;
+  
+        let currentFolder = ""
+        while(parsedPath.length) {
+          currentFolder =  `${currentFolder}/${parsedPath[0]}`;
+          let currentFolderName = parsedPath[0];
+          parsedPath = parsedPath.slice(1);
+  
+          if (!parsedPath.length) {
+            // final file
+            let file = currentFileStructure.find(x => x.path === currentFolder)
+            if (!file) {
+              currentFileStructure.push({
+                name: currentFolderName,
+                type: 'file',
+                path: currentFolder,
+                content: step.code
+              })
+            } else {
+              file.content = step.code;
+            }
+          } else {
+            /// in a folder
+            let folder = currentFileStructure.find(x => x.path === currentFolder)
+            if (!folder) {
+              // create the folder
+              currentFileStructure.push({
+                name: currentFolderName,
+                type: 'folder',
+                path: currentFolder,
+                children: []
+              })
+            }
+  
+            currentFileStructure = currentFileStructure.find(x => x.path === currentFolder)!.children!;
+          }
+        }
+        originalFiles = finalAnswerRef;
+      }
+
+    })
+
+    if (updateHappened) {
+
+      setFiles(originalFiles)
+      setSteps(steps => steps.map((s: Step) => {
+        return {
+          ...s,
+          status: "completed"
+        }
+      }))
+    }
+    console.log(files);
+  }, [steps, files]);
+
+  useEffect(() => {
+    const createMountStructure = (files: FileItem[]): Record<string, any> => {
+      const mountStructure: Record<string, any> = {};
+  
+      const processFile = (file: FileItem, isRootFolder: boolean) => {  
+        if (file.type === 'folder') {
+          // For folders, create a directory entry
+          mountStructure[file.name] = {
+            directory: file.children ? 
+              Object.fromEntries(
+                file.children.map(child => [child.name, processFile(child, false)])
+              ) 
+              : {}
+          };
+        } else if (file.type === 'file') {
+          if (isRootFolder) {
+            mountStructure[file.name] = {
+              file: {
+                contents: file.content || ''
+              }
+            };
+          } else {
+            // For files, create a file entry with contents
+            return {
+              file: {
+                contents: file.content || ''
+              }
+            };
+          }
+        }
+  
+        return mountStructure[file.name];
+      };
+  
+      // Process each top-level file/folder
+      files.forEach(file => processFile(file, true));
+  
+      return mountStructure;
+    };
+  
+    const mountStructure = createMountStructure(files);
+  
+    // Mount the structure if WebContainer is available
+    console.log(mountStructure);
+    webcontainer?.mount(mountStructure);
+  }, [files, webcontainer]);
   
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
@@ -145,8 +258,7 @@ export default function Builder() {
               {activeTab === 'code' ? (
                 <CodeEditor file={selectedFile} />
               ) : (
-                <div></div>
-                // <PreviewFrame webContainer={webcontainer} files={files} />
+                webcontainer && <PreviewFrame webContainer={webcontainer} files={files} />
               )}
             </div>
           </div>
